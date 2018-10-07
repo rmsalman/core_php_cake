@@ -3,20 +3,17 @@
 
 <?php 
 $cake_name = $cake_pic = $cake_category = $cake_price = $cake_des = '';
-
 if(isset($_GET['id']))
 {
 	$result = data_select('cake_id = '.$_GET['id']);
-
 	if (mysqli_num_rows($result) > 0) {
 		while($row = mysqli_fetch_assoc($result)) {
-			// print_r($row);
-		$cake_id = $row['cake_id'];
-		$cake_name = $row['cake_name'];
-		$cake_pic = $row['cake_pic'];
-		$cake_category = $row['cake_category'];
-		$cake_price = $row['cake_price'];
-		$cake_des = $row['cake_description'];
+			$cake_id = $row['cake_id'];
+			$cake_name = $row['cake_name'];
+			$cake_pic = $row['cake_pic'];
+			$cake_category = $row['cake_category'];
+			$cake_price = $row['cake_price'];
+			$cake_des = $row['cake_description'];
 		}
 	}
 }

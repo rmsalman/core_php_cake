@@ -3,7 +3,9 @@
 <html>
 <head>
 	<title>Registration system PHP and MySQL</title>
-	<link rel="stylesheet" type="text/css" href="style.css">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+	<link rel="stylesheet" type="text/css" href="assets/css/login.css">
 </head>
 <body>
 	<div class="header">

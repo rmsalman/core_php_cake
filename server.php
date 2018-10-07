@@ -2,7 +2,19 @@
 ini_set('display_errors',1);
 error_reporting(E_ALL);
 
-// session_start(); 
+session_start(); 
+
+if (isset($_SESSION['userid'])){
+	$userid = $_SESSION['userid'];
+}else {
+	$userid = '';
+}
+
+if (isset($_SESSION['role'])){
+	$role = $_SESSION['role'];
+}else {
+	$role = '';
+}
 
 	// variable declaration
 	$username = "";
@@ -13,6 +25,56 @@ error_reporting(E_ALL);
 
 	// connect to database
 	$db = mysqli_connect('localhost', 'root', 'root', 'vu');
+
+
+	// generic db select function
+	function data_select ($where = '1', $from='cakes', $select = '*') {
+		$sql = "SELECT $select FROM $from WHERE $where";
+		$data_select_result = mysqli_query($GLOBALS['db'], $sql);
+		if (mysqli_num_rows($data_select_result) > 0) {
+			return $data_select_result;
+		} else {
+			return $data_select_result = false;
+		}
+	}
+
+	// generic db delete function
+	if (isset($_GET['delete'])) {
+		$from = $_GET['from'];
+		$where = $_GET['where'];
+		$sql = "DELETE from $from where $where";
+		$delete_product = mysqli_query($db, $sql);
+		array_push($msgs, "Required $where has been Deleted");
+	}
+
+
+
+	function orders () {
+		$userid = $GLOBALS['userid'];
+		if($GLOBALS['role']){	
+			$where = 'where 1';
+		}else {
+			$where = "WHERE ord.order_user_id = $userid";
+		}
+
+		$sql = "SELECT * 
+				FROM orders ord
+				JOIN users usr
+				ON ord.order_user_id = usr.id
+				JOIN cakes ck
+				ON ord.order_cake_id = ck.cake_id
+				$where";
+
+		$data_select_result = mysqli_query($GLOBALS['db'], $sql);
+		if (mysqli_num_rows($data_select_result) > 0) {
+			return $data_select_result;
+		} else {
+			return $data_select_result = false;
+		}
+	}
+
+
+
 
 	// REGISTER USER
 	if (isset($_POST['reg_user'])) {
@@ -36,11 +98,16 @@ error_reporting(E_ALL);
 			$password = md5($password_1);//encrypt the password before saving in the database
 			$query = "INSERT INTO users (username, email, password) 
 					  VALUES('$username', '$email', '$password')";
-			mysqli_query($db, $query);
 
-			$_SESSION['username'] = $username;
-			$_SESSION['success'] = "You are now logged in";
-			header('location: index.php');
+			if (mysqli_query($db, $query)) {
+				$_SESSION['userid'] = $db->insert_id;
+				$_SESSION['username'] = $username;
+				$_SESSION['success'] = "You are now logged in";
+				array_push($msgs, "User Has been Created");
+			} else {
+				array_push($errors, mysqli_error($db));
+				array_push($errors, $sql);
+			}
 		}
 
 	}
@@ -64,6 +131,13 @@ error_reporting(E_ALL);
 			$results = mysqli_query($db, $query);
 
 			if (mysqli_num_rows($results) == 1) {
+			    while($row = $results->fetch_assoc()) {
+			    	$userid = $row['id'];	
+			    }
+				$_SESSION['userid'] = $userid;
+				if($userid == 1) {
+					$_SESSION['role'] = 1;
+				}
 				$_SESSION['username'] = $username;
 				$_SESSION['success'] = "You are now logged in";
 				header('location: index.php');
@@ -149,40 +223,56 @@ error_reporting(E_ALL);
 	}
 
 
-	function data_select ($where = '1', $from='cakes', $select = '*') {
-		$sql = "SELECT $select FROM $from where $where";
-		$data_select_result = mysqli_query($GLOBALS['db'], $sql);
-		if (mysqli_num_rows($data_select_result) > 0) {
-			return $data_select_result;
+	if (isset($_GET['order_cake_id'])) {
+		
+		if (!isset($_SESSION['userid'])){
+			header('location: index.php');
+		}
+
+		$order_cake_id = $order_user_id = $order_cake_size = $order_cake_status_admin = $order_cake_status_user = '';
+
+		$order_cake_id = mysqli_real_escape_string($db, $_GET['order_cake_id']);
+		$order_user_id = $_SESSION['userid'];
+
+		if(isset($_GET['orderinsert'])){
+			$sql = "INSERT INTO `orders` 
+			(`order_cake_id`, `order_user_id`) 
+			VALUES 
+			($order_cake_id, $order_user_id)";
+		}elseif(isset($_GET['orderupdate'])) {
+			$order_id = mysqli_real_escape_string($db, $_GET['order_id']);
+			if(isset($_GET['order_cake_status_user']) && $_GET['order_cake_status_user'] == 'on'){
+				$order_cake_status_user = 1;
+			}else {
+				$order_cake_status_user = 0;
+			}
+
+			if(isset($_GET['order_cake_status_admin']) && $_GET['order_cake_status_admin'] == 'on'){
+				$order_cake_status_admin = 1;
+			}else {
+				$order_cake_status_admin = 0;
+			}
+
+			if(!empty($_GET['order_cake_size'])){
+				$order_cake_size = $_GET['order_cake_size'];
+			}else {
+				$order_cake_size = 1;
+			}
+
+			if($role == 1){
+				$sql = "UPDATE `orders` SET `order_user_id`='$order_user_id',`order_cake_size`=$order_cake_size,`order_cake_status_admin`= $order_cake_status_admin,`order_cake_status_user`='$order_cake_status_user' WHERE `order_id` =". $order_id;
+			}else{
+				$sql = "UPDATE `orders` SET `order_cake_size`='$order_cake_size',`order_cake_status_user`='$order_cake_status_user' WHERE `order_id` =". $order_id;
+			}
+
+		}
+
+		if (mysqli_query($db, $sql)) {
+			array_push($msgs, "Order Has Been Added/Updated");
+			header('location: cart.php');
 		} else {
-			return $data_select_result = false;
+			array_push($errors, mysqli_error($db));
+			array_push($errors, $sql);
 		}
 	}
-
-
-	if (isset($_GET['delete'])) {
-		$from = $_GET['from'];
-		$where = $_GET['where'];
-		$sql = "DELETE from $from where $where";
-		$delete_product = mysqli_query($db, $sql);
-		array_push($msgs, "Required $where has been Deleted");
-	}
-
 ?>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
